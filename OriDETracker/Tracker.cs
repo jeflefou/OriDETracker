@@ -1,5 +1,6 @@
 ﻿using OriDE.Memory;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -35,12 +36,6 @@ namespace OriDETracker
             // Load the default logic options, bitfields, and mouse mappings
             SetDefaults();
 
-            // Settings window display
-            settings = new SettingsLayout(this)
-            {
-                Visible = false
-            };
-
             // Load settings for this form
             this.MoveToolStripMenuItem.Checked = TrackerSettings.Default.Draggable;
             this.AutoUpdateToolStripMenuItem.Checked = TrackerSettings.Default.AutoUpdate;
@@ -55,29 +50,13 @@ namespace OriDETracker
 
             // Auto update boolean values
             auto_update = TrackerSettings.Default.AutoUpdate;
-            started = false;
-            paused = false;
 
             if (font_color == null)
                 font_color = Color.White;
             if (BackColor == null)
                 BackColor = Color.Black;
 
-            //initialize the OriMemory module that Devil/Eiko/Sigma wrote
-            Mem = new OriMemory();
-            //start the background loop
-            th = new Thread(UpdateLoop)
-            {
-                IsBackground = true
-            };
-            if (auto_update)
-                TurnOnAutoUpdate();
-
             font_brush = new SolidBrush(font_color);
-
-            //handles weird exceptions and lets me know if there are potential problems
-            if (destroy == 1)
-                this.SoftReset();
 
             bool need_font, found_fount = false;
 
@@ -112,6 +91,21 @@ namespace OriDETracker
             }
             // finally load font
             map_font = new Font(font_family, 24f, FontStyle.Bold);
+
+            // Initialize the OriMemory module that Devil/Eiko/Sigma wrote
+            Mem = new OriMemory();
+
+            // Initialize background update loop
+            th = new Thread(UpdateLoop)
+            {
+                IsBackground = true
+            };
+
+            // Settings window display
+            settings = new SettingsLayout(this)
+            {
+                Visible = false
+            };
         }
 
         #region PrivateVariables
@@ -166,8 +160,6 @@ namespace OriDETracker
             { (int) TrackerPixelSizes.XL, new MapstoneText(342+15, 471+15, 28) }
         };
 
-        private readonly int destroy = 1;
-
         private readonly string[] skill_list = { "Spirit Flame", "Wall Jump", "Charge Flame", "Double Jump", "Bash", "Stomp", "Glide", "Climb", "Charge Jump", "Grenade", "Dash" };
         private readonly string[] event_list = { "Water Vein", "Gumon Seal", "Sunstone", "Clean Water", "Wind Restored" };
         private readonly string[] zone_list = { "Glades", "Grove", "Grotto", "Ginso", "Swamp", "Valley", "Misty", "Blackroot", "Sorrow", "Forlorn", "Horu" };
@@ -178,7 +170,7 @@ namespace OriDETracker
         {
             get { return font_color; }
             set { font_color = value; font_brush = new SolidBrush(value); }
-            
+
         }
         public Font MapFont
         {
@@ -260,14 +252,14 @@ namespace OriDETracker
         protected int mapstone_count = 0;
 
         //Skills, Trees, Events, Shards, Teleporters, and Relics
-        protected Dictionary<String, bool> haveSkill = new Dictionary<string, bool>();
-        protected Dictionary<String, bool> haveTree = new Dictionary<string, bool>();
-        protected Dictionary<String, bool> haveEvent = new Dictionary<string, bool>();
-        protected Dictionary<String, bool> haveShards = new Dictionary<string, bool>();
-        protected Dictionary<String, bool> teleportersActive = new Dictionary<string, bool>();
-        protected Dictionary<String, bool> teleportersInactive = new Dictionary<string, bool>();
-        protected Dictionary<String, bool> relicExists = new Dictionary<string, bool>();
-        protected Dictionary<String, bool> relicFound = new Dictionary<string, bool>();
+        protected ConcurrentDictionary<String, bool> haveSkill = new ConcurrentDictionary<string, bool>();
+        protected ConcurrentDictionary<String, bool> haveTree = new ConcurrentDictionary<string, bool>();
+        protected ConcurrentDictionary<String, bool> haveEvent = new ConcurrentDictionary<string, bool>();
+        protected ConcurrentDictionary<String, bool> haveShards = new ConcurrentDictionary<string, bool>();
+        protected ConcurrentDictionary<String, bool> teleportersActive = new ConcurrentDictionary<string, bool>();
+        protected ConcurrentDictionary<String, bool> teleportersInactive = new ConcurrentDictionary<string, bool>();
+        protected ConcurrentDictionary<String, bool> relicExists = new ConcurrentDictionary<string, bool>();
+        protected ConcurrentDictionary<String, bool> relicFound = new ConcurrentDictionary<string, bool>();
 
         //Bits
         private Dictionary<String, int> treeBits;
@@ -542,6 +534,16 @@ namespace OriDETracker
         #endregion
 
         #region EventHandlers
+        private void Tracker_Load(object sender, EventArgs e)
+        {
+            // Start background update loop when the tracker is loaded
+            // Avoid modified collection exception of dictionaries conflicted between init and update loop
+            if (auto_update)
+            {
+                this.TurnOnAutoUpdate();
+            }
+        }
+
         private void Tracker_MouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left && draggable)
@@ -556,7 +558,7 @@ namespace OriDETracker
         }
         protected void AutoUpdateToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            auto_update = !(auto_update);
+            auto_update = !auto_update;
 
             if (auto_update)
             {
@@ -604,6 +606,40 @@ namespace OriDETracker
         private void ClearToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ClearAll();
+        }
+        private void Tracker_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            // Stop background update loop before closing
+            // Avoid an update on disposed objects
+            if (auto_update)
+            {
+                this.TurnOffAutoUpdate();
+            }
+
+            TrackerSettings.Default.FontColoring = font_color;
+            TrackerSettings.Default.MapFont = font_family;
+            TrackerSettings.Default.Background = BackColor;
+            TrackerSettings.Default.RefreshRate = refresh_rate;
+            TrackerSettings.Default.Opacity = Opacity;
+
+            TrackerSettings.Default.Shards = track_shards;
+            TrackerSettings.Default.Teleporters = track_teleporters;
+            TrackerSettings.Default.Trees = track_trees;
+            TrackerSettings.Default.Relics = track_relics;
+            TrackerSettings.Default.Mapstones = track_mapstones;
+
+            TrackerSettings.Default.DisplayEmptyRelics = display_empty_relics;
+            TrackerSettings.Default.DisplayEmptyTrees = display_empty_trees;
+            TrackerSettings.Default.DisplayEmptyTeleporters = display_empty_teleporters;
+
+            TrackerSettings.Default.Pixels = tracker_size;
+            TrackerSettings.Default.AlwaysOnTop = this.TopMost;
+            TrackerSettings.Default.Draggable = draggable;
+            TrackerSettings.Default.AutoUpdate = auto_update;
+
+            TrackerSettings.Default.Save();
+
+            Mem?.Dispose();
         }
         #endregion
 
@@ -718,17 +754,16 @@ namespace OriDETracker
                  * (4) Drawing the Tree locations
                  * (5) Putting the skill wheel on top
                  * */
-                Rectangle drawRect = new Rectangle(new Point(0, 0), this.Size);
 
                 #region Draw
                 #region Skills
 
-                g.DrawImage(imageGSkills, drawRect);
+                g.DrawImage(imageGSkills, ClientRectangle);
                 foreach (KeyValuePair<String, bool> sk in haveSkill)
                 {
                     if (sk.Value)
                     {
-                        g.DrawImage(skillImages[sk.Key], drawRect);
+                        g.DrawImage(skillImages[sk.Key], ClientRectangle);
                     }
                 }
                 #endregion
@@ -744,14 +779,14 @@ namespace OriDETracker
                     {
                         if (relic.Value)
                         {
-                            g.DrawImage(relicExistImages[relic.Key], drawRect);
+                            g.DrawImage(relicExistImages[relic.Key], ClientRectangle);
                         }
                     }
                     foreach (KeyValuePair<String, bool> relic in relicFound)
                     {
                         if (relic.Value)
                         {
-                            g.DrawImage(relicFoundImages[relic.Key], drawRect);
+                            g.DrawImage(relicFoundImages[relic.Key], ClientRectangle);
                         }
                     }
                 }
@@ -768,7 +803,7 @@ namespace OriDETracker
                     {
                         if (tp.Value)
                         {
-                            g.DrawImage(teleporterActiveImages[tp.Key], drawRect);
+                            g.DrawImage(teleporterActiveImages[tp.Key], ClientRectangle);
                         }
                     }
                     if (display_empty_teleporters)
@@ -777,7 +812,7 @@ namespace OriDETracker
                         {
                             if (tp.Value)
                             {
-                                g.DrawImage(teleporterInactiveImages[tp.Key], drawRect);
+                                g.DrawImage(teleporterInactiveImages[tp.Key], ClientRectangle);
                             }
                         }
                     }
@@ -795,13 +830,13 @@ namespace OriDETracker
                 {
                     if (display_empty_trees)
                     {
-                        g.DrawImage(imageGTrees, drawRect);
+                        g.DrawImage(imageGTrees, ClientRectangle);
                     }
                     foreach (KeyValuePair<String, bool> sk in haveTree)
                     {
                         if (sk.Value)
                         {
-                            g.DrawImage(treeImages[sk.Key], drawRect);
+                            g.DrawImage(treeImages[sk.Key], ClientRectangle);
                         }
                     }
                 }
@@ -812,11 +847,11 @@ namespace OriDETracker
                 {
                     if (ev.Value)
                     {
-                        g.DrawImage(eventImages[ev.Key], drawRect);
+                        g.DrawImage(eventImages[ev.Key], ClientRectangle);
                     }
                     else
                     {
-                        g.DrawImage(eventGreyImages[ev.Key], drawRect);
+                        g.DrawImage(eventGreyImages[ev.Key], ClientRectangle);
                     }
                 }
                 #endregion
@@ -832,7 +867,7 @@ namespace OriDETracker
                     {
                         if (ev.Value)
                         {
-                            g.DrawImage(shardImages[ev.Key], drawRect);
+                            g.DrawImage(shardImages[ev.Key], ClientRectangle);
                         }
                     }
                 }
@@ -845,7 +880,7 @@ namespace OriDETracker
                  */
                 if (track_mapstones || mode_force_maps)
                 {
-                    g.DrawImage(imageMapStone, drawRect);
+                    g.DrawImage(imageMapStone, ClientRectangle);
                     if (font_brush == null)
                     {
                         font_brush = new SolidBrush(Color.White);
@@ -856,7 +891,7 @@ namespace OriDETracker
                 #endregion
                 #endregion
 
-                g.DrawImage(imageSkillWheelDouble, drawRect);
+                g.DrawImage(imageSkillWheelDouble, ClientRectangle);
             }
             catch
             {
@@ -897,12 +932,12 @@ namespace OriDETracker
             }
             mapstone_count = 0;
 
+            Refresh();
+
             if (tmp_auto_update)
             {
                 this.TurnOnAutoUpdate();
             }
-
-            Refresh();
         }
         protected void SoftReset()
         {
@@ -944,7 +979,7 @@ namespace OriDETracker
         }
         protected void TurnOffAutoUpdate()
         {
-            if (!(paused) && started)
+            if (!paused && started)
             {
                 th.Suspend();
                 started = true;
@@ -1084,32 +1119,6 @@ namespace OriDETracker
             TrackerSize = trackerSize;
             UpdateImages();
             Size = new Size(image_pixel_size, image_pixel_size);
-        }
-
-        private void Tracker_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            TrackerSettings.Default.FontColoring = font_color;
-            TrackerSettings.Default.MapFont = font_family;
-            TrackerSettings.Default.Background = BackColor;
-            TrackerSettings.Default.RefreshRate = refresh_rate;
-            TrackerSettings.Default.Opacity = Opacity;
-
-            TrackerSettings.Default.Shards = track_shards;
-            TrackerSettings.Default.Teleporters = track_teleporters;
-            TrackerSettings.Default.Trees = track_trees;
-            TrackerSettings.Default.Relics = track_relics;
-            TrackerSettings.Default.Mapstones = track_mapstones;
-
-            TrackerSettings.Default.DisplayEmptyRelics = display_empty_relics;
-            TrackerSettings.Default.DisplayEmptyTrees = display_empty_trees;
-            TrackerSettings.Default.DisplayEmptyTeleporters = display_empty_teleporters;
-
-            TrackerSettings.Default.Pixels = tracker_size;
-            TrackerSettings.Default.AlwaysOnTop = this.TopMost;
-            TrackerSettings.Default.Draggable = draggable;
-            TrackerSettings.Default.AutoUpdate = auto_update;
-
-            TrackerSettings.Default.Save();
         }
     }
 }
