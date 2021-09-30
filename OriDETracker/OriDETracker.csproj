@@ -30,8 +30,8 @@
     <PublisherName>MeldonTaragon</PublisherName>
     <WebPage>publish.htm</WebPage>
     <AutorunEnabled>true</AutorunEnabled>
-    <ApplicationRevision>8</ApplicationRevision>
-    <ApplicationVersion>3.3.0.%2a</ApplicationVersion>
+    <ApplicationRevision>9</ApplicationRevision>
+    <ApplicationVersion>3.3.1.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
     <BootstrapperEnabled>true</BootstrapperEnabled>
@@ -106,7 +106,7 @@
     <Compile Include="MapstoneFont.cs" />
     <Compile Include="MapstoneText.cs" />
     <Compile Include="MapstoneFontFactory.cs" />
-    <Compile Include="Settings.cs" />
+    <Compile Include="Memory\MemoryBitfields.cs" />
     <Compile Include="SettingsLayout.cs">
       <SubType>Form</SubType>
     </Compile>
