@@ -1,4 +1,4 @@
-name: Ori Definitive Edition Randomizer Tracker Build-CI
+name: Build-CI
 
 on:
   push:
@@ -10,8 +10,9 @@ jobs:
   build:
     runs-on: windows-2019
     steps:
+      - name: Checkout
       - uses: actions/checkout@v2
-      - name: Build sln
+      - name: Build
         run: |
            cd "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\"
            .\MSBuild.exe $Env:GITHUB_WORKSPACE\OriDETracker\OriDETracker.sln
