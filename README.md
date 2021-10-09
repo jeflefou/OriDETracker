@@ -1,6 +1,6 @@
 # Ori DE: Randomizer Tracker
 
-[![Build Status](https://dev.azure.com/jeffleffou/OriDETracker/_apis/build/status/jeflefou.OriDETracker)](https://dev.azure.com/jeffleffou/OriDETracker/_build/latest?definitionId=6)
+[![Build Status](https://dev.azure.com/jeffleffou/OriDETracker/_apis/build/status/jeflefou.OriDETracker)](https://dev.azure.com/jeffleffou/OriDETracker/_build/latest?definitionId=6) [![Build-CI](https://github.com/jeflefou/OriDETracker/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/jeflefou/OriDETracker/actions/workflows/ci.yml)
 
 ## Description
 This is a tracker for Ori DE. This tracker is intended for use with the [Ori DE 
