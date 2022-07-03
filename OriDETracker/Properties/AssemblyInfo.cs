@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("MeldonTaragon")]
 [assembly: AssemblyProduct("OriDETracker")]
-[assembly: AssemblyCopyright("Copyright ©  2017-2021")]
+[assembly: AssemblyCopyright("Copyright ©  2017-2022")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -31,5 +31,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.1.*")]
-[assembly: AssemblyVersion("3.3.1.*")]
-[assembly: AssemblyFileVersion("3.3.1")]
+[assembly: AssemblyVersion("3.3.2.*")]
+[assembly: AssemblyFileVersion("3.3.2")]
